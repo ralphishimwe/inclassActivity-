@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>InsightFlow Dashboard</title>
+
+<style>
+body {
+  font-family: Arial;
+  margin: 0;
+  background: #f4f6f9;
+}
+
+header {
+  background: #1f2937;
+  color: white;
+  padding: 15px;
+  text-align: center;
+}
+
+.container {
+  padding: 20px;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+input, select, button {
+  padding: 8px;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 10px;
+}
+
+th {
+  background: #e5e7eb;
+  cursor: pointer;
+}
+
+.high { background: #c8f7c5; }
+.mid { background: #fff3b0; }
+.low { background: #f8c8c8; }
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+.box {
+  background: white;
+  padding: 20px;
+  width: 300px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>InsightFlow Dashboard</h1>
+</header>
+
+<div class="container">
+
+<div class="controls">
+<input id="search" placeholder="Search name">
+<select id="role">
+<option value="">All Roles</option>
+<option>Developer</option>
+<option>Designer</option>
+<option>Project Manager</option>
+<option>QA Engineer</option>
+</select>
+
+<button onclick="openAdd()">Add Employee</button>
+</div>
+
+<div id="table"></div>
+<div id="summary"></div>
+
+</div>
+
+<div class="modal" id="modal">
+<div class="box" id="box"></div>
+</div>
+
+<script>
+
+let employees = [
+{ id: 1, name: "Alice Johnson", role: "Developer", score: 88 },
+{ id: 2, name: "James Smith", role: "Designer", score: 73 },
+{ id: 3, name: "Fatou Kamara", role: "Project Manager", score: 91 },
+{ id: 4, name: "David Mwangi", role: "QA Engineer", score: 64 }
+];
+
+let sortKey = "";
+let asc = true;
+
+/* EVENTS */
+document.getElementById("search").oninput = render;
+document.getElementById("role").onchange = render;
+
+/* GET FILTERED DATA */
+function getData() {
+let data = [...employees];
+
+let search = document.getElementById("search").value.toLowerCase();
+let role = document.getElementById("role").value;
+
+if (search) {
+data = data.filter(e => e.name.toLowerCase().includes(search));
+}
+
+if (role) {
+data = data.filter(e => e.role === role);
+}
+
+if (sortKey) {
+data.sort((a,b) => {
+if (typeof a[sortKey] === "number") {
+return asc ? a[sortKey]-b[sortKey] : b[sortKey]-a[sortKey];
+}
+return asc
+? a[sortKey].localeCompare(b[sortKey])
+: b[sortKey].localeCompare(a[sortKey]);
+});
+}
+
+return data;
+}
+
+/* SORT */
+function sortBy(key) {
+if (sortKey === key) asc = !asc;
+else sortKey = key;
+render();
+}
+
+/* RENDER TABLE USING DOM METHODS */
+function render() {
+let container = document.getElementById("table");
+container.innerHTML = "";
+
+let table = document.createElement("table");
+
+/* HEADER */
+let headers = ["name", "role", "score"];
+
+let trh = document.createElement("tr");
+
+headers.forEach(h => {
+let th = document.createElement("th");
+th.textContent = h.toUpperCase();
+th.onclick = () => sortBy(h);
+trh.appendChild(th);
+});
+
+let th = document.createElement("th");
+th.textContent = "ACTIONS";
+trh.appendChild(th);
+
+table.appendChild(trh);
+
+/* ROWS */
+let data = getData();
+
+data.forEach(emp => {
+let tr = document.createElement("tr");
+
+if (emp.score >= 85) tr.className = "high";
+else if (emp.score >= 70) tr.className = "mid";
+else tr.className = "low";
+
+let td1 = document.createElement("td");
+td1.textContent = emp.name;
+
+let td2 = document.createElement("td");
+td2.textContent = emp.role;
+
+let td3 = document.createElement("td");
+td3.textContent = emp.score;
+
+let td4 = document.createElement("td");
+
+let b1 = document.createElement("button");
+b1.textContent = "Edit";
+b1.onclick = () => edit(emp.id);
+
+let b2 = document.createElement("button");
+b2.textContent = "Delete";
+b2.onclick = () => del(emp.id);
+
+td4.appendChild(b1);
+td4.appendChild(b2);
+
+tr.appendChild(td1);
+tr.appendChild(td2);
+tr.appendChild(td3);
+tr.appendChild(td4);
+
+table.appendChild(tr);
+});
+
+container.appendChild(table);
+updateSummary();
+}
+
+/* SUMMARY */
+function updateSummary() {
+let total = employees.length;
+
+let avg = total
+? (employees.reduce((a,b)=>a+b.score,0)/total).toFixed(2)
+: 0;
+
+let top = total
+? employees.reduce((a,b)=>a.score>b.score?a:b).name
+: "-";
+
+document.getElementById("summary").innerHTML = `
+<h3>Summary</h3>
+<p>Total: ${total}</p>
+<p>Average: ${avg}</p>
+<p>Top: ${top}</p>
+`;
+}
+
+/* DELETE */
+function del(id) {
+employees = employees.filter(e => e.id !== id);
+render();
+}
+
+/* MODAL */
+function openModal(content) {
+document.getElementById("modal").style.display = "flex";
+document.getElementById("box").innerHTML = content;
+}
+
+function closeModal() {
+document.getElementById("modal").style.display = "none";
+}
+
+/* ADD */
+function openAdd() {
+openModal(`
+<h3>Add Employee</h3>
+<input id="n" placeholder="Name"><br><br>
+<input id="r" placeholder="Role"><br><br>
+<input id="s" type="number" placeholder="Score"><br><br>
+<button onclick="add()">Add</button>
+<button onclick="closeModal()">Cancel</button>
+`);
+}
+
+function add() {
+let name = document.getElementById("n").value;
+let role = document.getElementById("r").value;
+let score = Number(document.getElementById("s").value);
+
+if (!name || !role || isNaN(score)) return alert("Fill all fields");
+if (score < 0 || score > 100) return alert("0–100 only");
+
+employees.push({
+id: Date.now(),
+name,
+role,
+score
+});
+
+closeModal();
+render();
+}
+
+/* EDIT */
+function edit(id) {
+let e = employees.find(x => x.id === id);
+
+openModal(`
+<h3>Edit</h3>
+<input id="r" value="${e.role}"><br><br>
+<input id="s" type="number" value="${e.score}"><br><br>
+<button onclick="save(${e.id})">Save</button>
+<button onclick="closeModal()">Cancel</button>
+`);
+}
+
+function save(id) {
+let role = document.getElementById("r").value;
+let score = Number(document.getElementById("s").value);
+
+if (!role || isNaN(score)) return alert("Invalid");
+if (score < 0 || score > 100) return alert("0–100 only");
+
+let emp = employees.find(e => e.id === id);
+emp.role = role;
+emp.score = score;
+
+closeModal();
+render();
+}
+
+/* INIT */
+render();
+
+</script>
+
+</body>
+</html>
